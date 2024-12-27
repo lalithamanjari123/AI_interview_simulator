@@ -7,6 +7,7 @@ import QuestionsSection from './_components/QuestionsSection';
 import RecordAnswerSection from './_components/RecordAnswerSection';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
+import EndInterviewButton from './EndInterviewButton';
 
 function StartInterview({ params }) {
 
@@ -14,10 +15,15 @@ function StartInterview({ params }) {
     const [mockInterviewQuestion, setMockInterviewQuestion] = useState(null);
     const [activeQuestionIndex, setActiveQuestionIndex] = useState(0);
 
-    useEffect(() => {
-        console.log("id:" + params.interviewId);
-        GetInterviewDetails();
-    }, [params]);
+    const interviewId = React.use(params)?.interviewId;
+
+    React.useEffect(() => {
+        if (interviewId) {
+            console.log("id:", interviewId);
+            GetInterviewDetails();
+        }
+    }, [interviewId]);
+
 
     useEffect(() => {
         // Log the interviewData and mockInterviewQuestion after they are set
@@ -33,7 +39,7 @@ function StartInterview({ params }) {
             const result = await db
                 .select()
                 .from(MockInterview)
-                .where(eq(MockInterview.mockId, params.interviewId)); // Use the filter here
+                .where(eq(MockInterview.mockId, interviewId)); // Use the filter here
 
             console.log("result:", result);
             if (result.length > 0) {
@@ -78,10 +84,10 @@ function StartInterview({ params }) {
               <Button onClick={()=>setActiveQuestionIndex(activeQuestionIndex-1)}>Previous Question</Button>}
               {activeQuestionIndex!=mockInterviewQuestion?.length-1 && 
               <Button onClick={()=>setActiveQuestionIndex(activeQuestionIndex+1)}>Next Question</Button>}
-              {activeQuestionIndex==mockInterviewQuestion?.length-1 && 
-              <Link href={"/dashboard/interview/"+interviewData?.mockId+"/feedback"}>
-              <Button>End Interview</Button>
-              </Link>}
+              {/*{activeQuestionIndex==mockInterviewQuestion?.length-1 && 
+              
+              <EndInterviewButton/>
+              }*/}
             </div>
         </div>
     );
