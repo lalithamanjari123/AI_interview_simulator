@@ -1,39 +1,33 @@
-"use client"
-import { Button } from '@/components/ui/button'
-import Image from 'next/image'
-import React, { useEffect, useState,useRef } from 'react'
-import Webcam from 'react-webcam'
-import useSpeechToText from 'react-hook-speech-to-text';
-import { Mic, StopCircle } from 'lucide-react'
-import { toast } from 'sonner'
-import { chatSession } from '@/utils/GeminiAIModel'
-import { UserAnswer} from '@/utils/schema';
-import { useUser } from '@clerk/nextjs'
-import moment from 'moment'
-import { db } from '@/utils/db'
-import EmotionAnalysis from '../../feedback/EmotionAnalysis'
-import EmotionGraph from '../../feedback/EmotionGraph'
-import EndInterviewButton from '../EndInterviewButton'
+"use client";
+import "regenerator-runtime"
+import { Button } from '@/components/ui/button';
+import { useRouter } from "next/navigation";
+import React, { useEffect, useState, useRef } from 'react';
+import Webcam from 'react-webcam';
+import { Mic, StopCircle ,Code} from 'lucide-react';
+import { toast } from 'sonner';
+import { chatSession } from '@/utils/GeminiAIModel';
+import { UserAnswer } from '@/utils/schema';
+import { useUser } from '@clerk/nextjs';
+import moment from 'moment';
+import Model from './codeArea/Model'
+import CodeArea from "./codeArea/page.jsx";
+import { db } from '@/utils/db';
+
+import EmotionAnalysis from '../../feedback/EmotionAnalysis';
+import EmotionGraph from '../../feedback/EmotionGraph';
+import EndInterviewButton from '../EndInterviewButton';
 import * as faceapi from 'face-api.js';
+import SpeechRecognition, { useSpeechRecognition } from "react-speech-recognition";
+import useClipboard from "react-use-clipboard";
 
-function RecordAnswerSection({mockInterviewQuestion,activeQuestionIndex,interviewData}) {
-
-    const[userAnswer,setUserAnswer]=useState('');
-    const {user}=useUser();
-    const [loading,setLoading]=useState(false);
-    const {
-        error,
-        interimResult,
-        isRecording,
-        results,
-        startSpeechToText,
-        stopSpeechToText,
-        setResults
-      } = useSpeechToText({
-        continuous: true,
-        useLegacyResults: false
-      });
-      const videoRef = useRef(null);
+function RecordAnswerSection({ mockInterviewQuestion, activeQuestionIndex, interviewData }) {
+  const router = useRouter();  
+  const [userAnswer, setUserAnswer] = useState('');
+  const { user } = useUser();
+  const [loading, setLoading] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const [emotion, setEmotion] = useState(null);
   const [age, setAge] = useState(null);
@@ -41,6 +35,99 @@ function RecordAnswerSection({mockInterviewQuestion,activeQuestionIndex,intervie
   const [faceDetected, setFaceDetected] = useState(false);
   const [emotionData, setEmotionData] = useState([]);
   const [isInterviewEnded, setIsInterviewEnded] = useState(false);
+  const [textToCopy, setTextToCopy] = useState("");
+  const [isCopied, setCopied] = useClipboard(textToCopy, { successDuration: 1000 });
+  const [pitchData, setPitchData] = useState([]);
+  const [isAnalyzingPitch, setIsAnalyzingPitch] = useState(false);
+  const [recordingStartTime, setRecordingStartTime] = useState(null);
+  const [feedback, setFeedback] = useState(null);
+  const { transcript, browserSupportsSpeechRecognition } = useSpeechRecognition();
+
+  // Debounced user answer update
+  const [debouncedAnswer, setDebouncedAnswer] = useState(userAnswer);
+  const [isModalOpen, setIsModalOpen] = useState(false); // State to control modal visibility
+
+  // Function to toggle the modal visibility
+  const openCodeEditor = () => {
+    setIsModalOpen(true);
+  };
+
+  const closeModal = () => {
+    setIsModalOpen(false);
+  };
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedAnswer(userAnswer);
+    }, 1000); // delay of 1 second
+
+    return () => clearTimeout(timer);
+  }, [userAnswer]);
+
+  useEffect(() => {
+    setUserAnswer(transcript.trim());
+  }, [transcript]);
+
+  const startListening = () => {
+    SpeechRecognition.startListening({ continuous: true, language: "en-IN" });
+    setPitchData([]);
+    setRecordingStartTime(Date.now());
+    setIsAnalyzingPitch(true);
+    setFeedback(null);
+  };
+
+  const stopListening = () => {
+    SpeechRecognition.stopListening();
+    setIsAnalyzingPitch(false);
+
+    const words = transcript.trim().split(/\s+/).length;
+    const durationInSeconds = (Date.now() - recordingStartTime) / 1000;
+    const wordsPerSecond = words / durationInSeconds;
+
+    // Fluency
+    let fluency = "";
+    if (wordsPerSecond >= 3) fluency = "High Fluency";
+    else if (wordsPerSecond >= 1.5) fluency = "Moderate Fluency";
+    else fluency = "Low Fluency";
+
+    // Tone
+    const avgPitch = pitchData.length
+      ? (pitchData.reduce((a, b) => a + b, 0) / pitchData.length).toFixed(2)
+      : 0;
+    let tone = "";
+    if (avgPitch >= 30) tone = "High Tone";
+    else if (avgPitch >= 10) tone = "Moderate Tone";
+    else tone = "Low Tone";
+
+    // Pitch Variation
+    const pitchVariation = pitchData.length
+      ? (Math.max(...pitchData) - Math.min(...pitchData)).toFixed(2)
+      : "N/A";
+
+    // Set feedback
+    setFeedback({
+      transcript,
+      fluency,
+      tone,
+      avgPitch,
+      pitchVariation,
+    });
+
+    setUserAnswer(''); // Clear user answer after stop
+  };
+
+  const toggleRecording = () => {
+    if (isRecording) {
+      stopListening();
+      setIsRecording(false);
+    } else {
+      startListening();
+      setIsRecording(true);
+    }
+  };
+
+  if (!browserSupportsSpeechRecognition) {
+    return <p>Browser does not support speech recognition.</p>;
+  }
 
   useEffect(() => {
     const loadModels = async () => {
@@ -108,140 +195,149 @@ function RecordAnswerSection({mockInterviewQuestion,activeQuestionIndex,intervie
     }
   };
 
-      useEffect(()=>{
-        results.map((result)=>{
-            setUserAnswer(prevAns=>prevAns+result?.transcript)
-        })
-      },[results])
+  useEffect(() => {
+    if (transcript) {
+      setUserAnswer((prevAns) => {
+        // Ensure we append the transcript only once and avoid duplication
+        return prevAns.includes(transcript) ? prevAns : prevAns + transcript;
+      });
+    }
+  }, [transcript]);
+  
 
-      useEffect(()=>{
-        if(!isRecording && userAnswer.length>10){
-            UpdateUserAnswer();
-        }
-        /*if(userAnswer?.length<10){
-            setLoading(false);
-            toast('Error while saving your answer, please record again')
-            return;
-        }*/
-        
+  useEffect(() => {
+    if (!isRecording && userAnswer.length > 10) {
+      UpdateUserAnswer();
+      setIsRecordingAnswered(true);
+    }
+  }, [userAnswer, isRecording]);
+  const [isRecordingAnswered, setIsRecordingAnswered] = useState(false);
 
-      },[userAnswer,isRecording])
-
-      const StartStopRecording=async()=>{
-        if(isRecording){
-            
-            stopSpeechToText();
-            
-        }
-        else{
-            startSpeechToText();
-        }
+  const UpdateUserAnswer = async () => {
+    try {
+      if (!interviewData || !mockInterviewQuestion[activeQuestionIndex]) {
+        toast.error('Interview data or question data is missing.');
+        return;
       }
 
-      const UpdateUserAnswer = async () => {
-        try {
-          // Check if essential data is available
-          if (!interviewData || !mockInterviewQuestion[activeQuestionIndex]) {
-            toast.error('Interview data or question data is missing.');
-            return;
-          }
-    
-          setLoading(true);
-          console.log('User Answer:',userAnswer);
-    
-          const feedbackPrompt = `
-            Question: ${mockInterviewQuestion[activeQuestionIndex]?.question},
-            User Answer: ${userAnswer},
-            Please provide a rating and feedback for the given answer based on the question.
-            Respond in JSON format with fields: rating and feedback.
-          `;
-    
-          const result = await chatSession.sendMessage(feedbackPrompt);
-          const mockJsonResp = (await result.response.text())
-            .replace('```json', '')
-            .replace('```', '');
-          const JsonFeedbackResp = JSON.parse(mockJsonResp);
-    
-          console.log('Feedback Response:', JsonFeedbackResp);
-    
-          const resp = await db.insert(UserAnswer).values({
-            mockIdRef: interviewData?.mockId,
-            question: mockInterviewQuestion[activeQuestionIndex]?.question,
-            correctAns: mockInterviewQuestion[activeQuestionIndex]?.answer,
-            userAns: userAnswer,
-            feedback: JsonFeedbackResp?.feedback,
-            rating: JsonFeedbackResp?.rating,
-            userEmail: user?.primaryEmailAddress?.emailAddress,
-            createdAt: moment().format('DD-MM-yyyy'),
-          });
-    
-          if (resp) {
-            toast.success('User Answer Recorded successfully.');
-             setUserAnswer('');
-             setResults([])
-          }
-        } catch (error) {
-          console.error('Error while saving user answer:', error);
-          toast.error('Error while saving your answer, please try again.');
-        } finally {
-          setResults([])
-          setUserAnswer(''); // Clear the answer after saving
-          setLoading(false); // Reset loading state
-        }
-      };
+      setLoading(true);
+      console.log('User Answer:', userAnswer);
+      console.log("feedback:", feedback);
+
+      const feedbackPrompt = `
+        Question: ${mockInterviewQuestion[activeQuestionIndex]?.question},
+        User Answer: ${userAnswer},
+        Please provide a rating and feedback for the given answer based on the question.
+        Respond in JSON format with fields: rating and feedback.
+      `;
+
+      const result = await chatSession.sendMessage(feedbackPrompt);
+      const mockJsonResp = (await result.response.text())
+        .replace('```json', '')
+        .replace('```', '');
+      const JsonFeedbackResp = JSON.parse(mockJsonResp);
+
+      console.log('Feedback Response:', JsonFeedbackResp);
+
+      const resp = await db.insert(UserAnswer).values({
+        mockIdRef: interviewData?.mockId,
+        question: mockInterviewQuestion[activeQuestionIndex]?.question,
+        correctAns: mockInterviewQuestion[activeQuestionIndex]?.answer,
+        userAns: userAnswer,
+        feedback: JsonFeedbackResp?.feedback,
+        rating: JsonFeedbackResp?.rating,
+        userEmail: user?.primaryEmailAddress?.emailAddress,
+        createdAt: moment().format('DD-MM-yyyy'),
+        fluency: feedback?.fluency,
+        tone: feedback?.tone,
+        avgPitch: feedback?.avgPitch,
+        pitchVariation: feedback?.pitchVariation,
+      });
+
+      if (resp) {
+        toast.success('User Answer Recorded successfully.');
+        setUserAnswer('');
+      }
+    } catch (error) {
+      console.error('Error while saving user answer:', error);
+      toast.error('Error while saving your answer, please try again.');
+    } finally {
+      setLoading(false); // Reset loading state
+    }
+  };
+ 
+
   return (
     <div className='flex items-center justify-center flex-col'>
-    <div className='flex flex-col mt-20 bg-slate-600 justify-center items-center bg-secondary rounded-lg p-5'>
-   
-      {!isInterviewEnded ? (
-        <div>
-          <video
-            ref={videoRef}
-            autoPlay
-            muted
-            width="500"
-            height="300"
-            className="border border-gray-300 rounded-md"
-          />
-          <canvas
-            ref={canvasRef}
-            width="640"
-            height="480"
-            className="absolute top-0 left-0"
-          />
-          {faceDetected ? (
-            <div className="mt-4">
-              {/*<h2 className="text-lg">Detected Emotion: {emotion}</h2>
-              <h2 className="text-lg">Estimated Age: {age}</h2>
-              <h2 className="text-lg">Estimated Gender: {gender}</h2>*/}
-            </div>
-          ) : (
-            <h2 className="text-lg text-red-500 mt-4">
-              No face detected. Please adjust your position.
-            </h2>
-          )}
-           {activeQuestionIndex==mockInterviewQuestion?.length-1 && 
-          <EndInterviewButton onClick={endInterview} interviewData={interviewData} emotionData={emotionData} />}
-        </div>
-      ) : (
-        <div className="flex flex-col lg:flex-row gap-8">
-          {/*<EmotionGraph emotionData={emotionData} />
-          <EmotionAnalysis emotionData={emotionData} />*/}
-        </div>
-      )}
-  
-    </div>
-    <Button disabled={loading} variant="outline" className="my-20" onClick={StartStopRecording}>
-        {isRecording?
-        <h2 className='text-red-600 flex gap-2'>
-        <StopCircle/>Stop Recording
-        </h2>
-        :
-         
-         <h2 className='text-primary flex gap-2'><Mic/>Record Answer</h2>
-        }</Button>
-    </div>
-  )
-}
+      <div className='flex flex-col mt-20 bg-slate-600 justify-center items-center bg-secondary rounded-lg p-5'>
+        {!isInterviewEnded ? (
+          <div>
+            <video
+              ref={videoRef}
+              autoPlay
+              muted
+              width="500"
+              height="300"
+              className="border border-gray-300 rounded-md"
+            />
+            <canvas
+              ref={canvasRef}
+              width="640"
+              height="480"
+              className="absolute top-0 left-0"
+            />
+            {faceDetected ? (
+              <div className="mt-4">
+                {/* Emotion analysis components */}
+              </div>
+            ) : (
+              <h2 className="text-lg text-red-500 mt-4">No face detected. Please adjust your position.</h2>
+            )}
+            {activeQuestionIndex === mockInterviewQuestion?.length - 1 && (
+              <EndInterviewButton onClick={endInterview} interviewData={interviewData} emotionData={emotionData} />
+            )}
+          </div>
+        ) : (
+          <div className="flex flex-col lg:flex-row gap-8">
+            {/* EmotionGraph and EmotionAnalysis components */}
+          </div>
+        )}
+      </div>
+      <div className="flex gap-4">
+  {/* Record Answer Button */}
+  <Button
+    disabled={loading}
+    variant="outline"
+    className="my-20"
+    onClick={toggleRecording}
+  >
+    {isRecording ? (
+      <h2 className="text-red-600 flex gap-2">
+        <StopCircle /> Stop Recording
+      </h2>
+    ) : (
+      <h2 className="text-primary flex gap-2"><Mic /> Record Answer</h2>
+    )}
+  </Button>
 
-export default RecordAnswerSection
+  {/* Open Editor Button */}
+  <Button
+    variant="outline"
+    className="my-20"
+    onClick={openCodeEditor} // Replace with your actual functionality
+  >
+    <h2 className="text-primary flex gap-2">
+      <Code/>
+      Open Editor
+    </h2>
+  </Button>
+  <Model isOpen={isModalOpen} closeModal={closeModal}>
+        <CodeArea isOpen={isModalOpen} closeModal={closeModal} setUserAnswer={setUserAnswer}/>
+       
+      </Model>
+</div>
+    </div>
+  );
+}
+export default RecordAnswerSection;
+

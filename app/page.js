@@ -1,14 +1,17 @@
 "use client"
-import React,{useState} from "react";
+import React, { useState } from "react";
+import 'regenerator-runtime/runtime';
+import { UserButton } from '@clerk/nextjs';
 import { useAuth } from "@clerk/nextjs"; // Correct Clerk import
-import { useRouter } from "next/navigation"
-
+import {usePathname, useRouter } from "next/navigation";
 
 const HomePage = () => {
   const router = useRouter();
+  const path = usePathname();
   const { isSignedIn } = useAuth(); // Clerk's signed-in status
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   console.log(isSignedIn);
+
   const handleGetStarted = () => {
     if (isSignedIn) {
       // Redirect to dashboard if signed in
@@ -18,102 +21,151 @@ const HomePage = () => {
       router.push("/sign-in");
     }
   };
+
+  const handleResumeBuilderClick = () => {
+    if (isSignedIn) {
+      // Redirect to Resume Builder if signed in
+      router.push("/dashboard/ResumeBuilder");
+    } else {
+      // Redirect to sign-in page if not signed in
+      router.push("/sign-in");
+    }
+  };
+  const handleInterviewClick = () => {
+    if (isSignedIn) {
+      // Redirect to Resume Builder if signed in
+      router.push("/dashboard");
+    } else {
+      // Redirect to sign-in page if not signed in
+      router.push("/sign-in");
+    }
+  };
+  const handleHomeClick = () => {
+    router.push('/'); // Navigates to the homepage
+  };
+
+
   const toggleMenu = () => {
     setIsMenuOpen((prev) => !prev); // Toggle the mobile menu
   };
+
   return (
     <div className="min-h-screen bg-gray-100">
       {/* Navbar */}
-      <nav className="bg-white shadow-md fixed w-full z-10 top-0">
-        <div className="container mx-auto px-4 py-3 flex justify-between items-center">
-          {/* Logo */}
-          <div className="text-xl font-bold text-primary">Interview<span className="text-xl  text-black">AI</span></div>
-
-          {/* Menu Items */}
-          <ul className="hidden md:flex space-x-10 text-gray-700">
-            <li className=" text-black hover:text-primary cursor-pointer">Home</li>
-            <li className=" text-black hover:text-primary cursor-pointer">Video Interview</li>
-            <li className="text-black hover:text-primary cursor-pointer">Audio Interview</li>
-            <li className="text-black hover:text-primary cursor-pointer">Resume Builder</li>
-            <li className="text-black hover:text-primary cursor-pointer">Resume Analyser</li>
-            <li className="text-black hover:text-primary cursor-pointer">Tech Quiz</li>
-            <li className=" text-black hover:text-primary cursor-pointer">Courses</li>
-          </ul>
-
-          {/* Mobile Menu Button */}
-          <div className="md:hidden">
-            <button className="text-gray-700 focus:outline-none" onClick={toggleMenu}>
-              <svg
-                className="w-6 h-6"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M4 6h16M4 12h16M4 18h16"
-                ></path>
-              </svg>
-            </button>
-          </div>
+      <nav className="flex p-4 items-center justify-between bg-secondary shadow-sm">
+      <div className="container mx-auto px-4 py-3 flex justify-between items-center">
+        {/* Logo */}
+        <div className="text-xl font-bold text-primary">
+          Interview<span className="text-xl text-black">AI</span>
         </div>
+
+        {/* Menu Items */}
+        <ul className="hidden md:flex space-x-10 text-gray-700">
+          <li
+            className={`hover:text-primary hover:font-bold transition-all cursor-pointer ${path === '/' && 'text-primary font-bold'}`}
+          onClick={handleHomeClick}>
+            Home
+          </li>
+          <li
+            className={`hover:text-primary hover:font-bold transition-all cursor-pointer ${path === '/video-interview' && 'text-primary font-bold'}`}
+          onClick={handleInterviewClick}>
+            Interview
+          </li>
+          
+          <li
+            className={`hover:text-primary hover:font-bold transition-all cursor-pointer ${path === '/resume-builder' && 'text-primary font-bold'}`}
+            onClick={handleResumeBuilderClick}
+          >
+            Resume Builder
+          </li>
+          <li
+            className={`hover:text-primary hover:font-bold transition-all cursor-pointer ${path === '/resume-analyser' && 'text-primary font-bold'}`}
+          >
+            Resume Analyser
+          </li>
+          
+          <li
+            className={`hover:text-primary hover:font-bold transition-all cursor-pointer ${path === '/courses' && 'text-primary font-bold'}`}
+          >
+            Courses
+          </li>
+        </ul>
+        {isSignedIn &&<div className="hidden md:flex">
+          <UserButton />
+        </div>}
+
+
+        {/* Mobile Menu Button */}
+        <div className="md:hidden">
+          <button
+            className="text-gray-700 focus:outline-none"
+            onClick={toggleMenu}
+          >
+            <svg
+              className="w-6 h-6"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M4 6h16M4 12h16M4 18h16"
+              ></path>
+            </svg>
+          </button>
+        </div>
+      </div>
+
       {/* Mobile Menu */}
       {isMenuOpen && (
-          <ul className="md:hidden bg-white shadow-md px-4 py-4 space-y-4">
-            <li className="text-black hover:text-primary cursor-pointer">Home</li>
-            <li className="text-black hover:text-primary cursor-pointer">
-              Video Interview
-            </li>
-            <li className="text-black hover:text-primary cursor-pointer">
-              Audio Interview
-            </li>
-            <li className="text-black hover:text-primary cursor-pointer">
-              Resume Builder
-            </li>
-            <li className="text-black hover:text-primary cursor-pointer">
-              Resume Analyser
-            </li>
-            <li className="text-black hover:text-primary cursor-pointer">
-              Tech Quiz
-            </li>
-            <li className="text-black hover:text-primary cursor-pointer">Courses</li>
-          </ul>
-        )}
-      </nav>
+        <ul className="md:hidden bg-white shadow-md px-4 py-4 space-y-4">
+          <li className="text-black hover:text-primary cursor-pointer" onClick={handleHomeClick}>Home</li>
+          <li className="text-black hover:text-primary cursor-pointer"onClick={handleInterviewClick}>Interview</li>
+          <li
+            className="text-black hover:text-primary cursor-pointer"
+            onClick={handleResumeBuilderClick}
+          >
+            Resume Builder
+          </li>
+          <li className="text-black hover:text-primary cursor-pointer">Resume Analyser</li>
+          <li className="text-black hover:text-primary cursor-pointer">Courses</li>
+        </ul>
+      )}
+      
+    </nav>
 
       {/* Hero Section */}
       <section className="flex flex-col md:flex-row items-center justify-between container mx-auto px-4 py-20 mt-16">
         {/* Left Content */}
         <div className="md:w-1/2 space-y-6 pl-10">
-  <h1 className="text-4xl font-bold text-gray-800 leading-tight">
-    Next-Gen <br />
-    AI <span className="text-4xl font-bold text-primary">Interview</span> Simulator
-  </h1>
-  <p className="text-gray-600">
-    Experience the future of interview preparation <br />
-    with our AI-powered tools. Analyze, improve, and excel in your <br />
-    interviews with cutting-edge technology.
-  </p>
-  <button
-    onClick={handleGetStarted}
-    className="px-6 py-3 bg-primary text-white rounded-lg shadow hover:bg-blue-700"
-  >
-    Get Started
-  </button>
-</div>
+          <h1 className="text-4xl font-bold text-gray-800 leading-tight">
+            Next-Gen <br />
+            AI <span className="text-4xl font-bold text-primary">Interview</span> Simulator
+          </h1>
+          <p className="text-gray-600">
+            Experience the future of interview preparation <br />
+            with our AI-powered tools. Analyze, improve, and excel in your <br />
+            interviews with cutting-edge technology.
+          </p>
+          <button
+            onClick={handleGetStarted}
+            className="px-6 py-3 bg-primary text-white rounded-lg shadow hover:bg-blue-700"
+          >
+            Get Started
+          </button>
+        </div>
 
         {/* Right Content */}
         <div className="md:w-1/2 mt-5 md:mt-0">
-  <img
-    src="/homeImage.png"
-    alt="AI Interview"
-    className="w-100 h-auto rounded-lg shadow-lg"
-  />
-</div>
-
+          <img
+            src="/homeImage.png"
+            alt="AI Interview"
+            className="w-100 h-auto rounded-lg shadow-lg"
+          />
+        </div>
       </section>
 
       {/* Why Us Section */}

@@ -1,4 +1,5 @@
 
+import { varbinary } from "drizzle-orm/mysql-core";
 import { pgTable,serial,text,varchar } from "drizzle-orm/pg-core";
 
 export const MockInterview=pgTable('MockInterview',{
@@ -22,5 +23,8 @@ export const UserAnswer=pgTable('UserAnswer',{
     rating:varchar('rating'),
     userEmail:varchar('userEmail'),
     createdAt:varchar('createdAt'),
-
+    fluency: varchar('fluency'),  // Added nullable properties for fluency, tone, etc.
+    tone: varchar('tone'),
+    avgPitch: varchar('avgPitch'),
+    pitchVariation: varchar('pitchVariation'),
 })
