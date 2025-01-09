@@ -1,25 +1,24 @@
-"use client"
-import React,{useState} from 'react'
-import ResumeForm from './forms/ResumeForm';
-import ResumePreview from './preview/ResumePreview';
+"use client";
+import React from "react";
+import { Provider } from "react-redux";
+import { store } from "../../../lib/redux/store";
+import { ResumeForm } from "./_components/ResumeForm";
+import { Resume } from "./_components/Resume";
 
-function resumeBuilder() {
-    const [formData, setFormData] = useState(null);
-
-    const handleFormSubmit = (data) => {
-      setFormData(data);
-    };
-  
+export default function Create() {
   return (
-    <div className="flex justify-between p-8">
-      <div className="w-1/2">
-        <ResumeForm onFormSubmit={handleFormSubmit} />
-      </div>
-      <div className="w-1/2 border-l pl-8">
-        {formData && <ResumePreview formData={formData} />}
-      </div>
-    </div>
-  )
+    <Provider store={store}>
+      <main className="relative h-screen w-full overflow-hidden bg-gray-50">
+        <div className="grid grid-cols-3 md:grid-cols-6 h-full">
+          {/* Apply overflow and height styles directly */}
+          <div className="col-span-3 h-full overflow-y-auto bg-white">
+            <ResumeForm />
+          </div>
+          <div className="col-span-3 h-full overflow-hidden">
+            <Resume />
+          </div>
+        </div>
+      </main>
+    </Provider>
+  );
 }
-
-export default resumeBuilder

@@ -1,7 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   // Enable React strict mode for catching potential issues in your app
-  reactStrictMode: true,
+  reactStrictMode: false,
 
   // Enable SWC for faster builds and better minification
   swcMinify: true,
@@ -27,6 +27,8 @@ const nextConfig = {
 
       return config;
   },
+
+  transpilePackages: ["@react-pdf/renderer"],
 };
 
 export default nextConfig;

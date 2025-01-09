@@ -1,16 +1,16 @@
 "use client";
-import "regenerator-runtime"
+import "regenerator-runtime";
 import { Button } from '@/components/ui/button';
 import { useRouter } from "next/navigation";
 import React, { useEffect, useState, useRef } from 'react';
 import Webcam from 'react-webcam';
-import { Mic, StopCircle ,Code} from 'lucide-react';
+import { Mic, StopCircle, Code } from 'lucide-react';
 import { toast } from 'sonner';
 import { chatSession } from '@/utils/GeminiAIModel';
 import { UserAnswer } from '@/utils/schema';
 import { useUser } from '@clerk/nextjs';
 import moment from 'moment';
-import Model from './codeArea/Model'
+import Model from './codeArea/Model';
 import CodeArea from "./codeArea/page.jsx";
 import { db } from '@/utils/db';
 
@@ -21,8 +21,8 @@ import * as faceapi from 'face-api.js';
 import SpeechRecognition, { useSpeechRecognition } from "react-speech-recognition";
 import useClipboard from "react-use-clipboard";
 
-function RecordAnswerSection({ mockInterviewQuestion, activeQuestionIndex, interviewData }) {
-  const router = useRouter();  
+function RecordAnswerSection({ mockInterviewQuestion, activeQuestionIndex, setActiveQuestionIndex, interviewData }) {
+  const router = useRouter();
   const [userAnswer, setUserAnswer] = useState('');
   const { user } = useUser();
   const [loading, setLoading] = useState(false);
@@ -41,13 +41,13 @@ function RecordAnswerSection({ mockInterviewQuestion, activeQuestionIndex, inter
   const [isAnalyzingPitch, setIsAnalyzingPitch] = useState(false);
   const [recordingStartTime, setRecordingStartTime] = useState(null);
   const [feedback, setFeedback] = useState(null);
-  const { transcript, browserSupportsSpeechRecognition } = useSpeechRecognition();
+  const { transcript, browserSupportsSpeechRecognition, resetTranscript } = useSpeechRecognition();
+  const [isFeedbackProcessed, setIsFeedbackProcessed] = useState(false);
 
-  // Debounced user answer update
   const [debouncedAnswer, setDebouncedAnswer] = useState(userAnswer);
-  const [isModalOpen, setIsModalOpen] = useState(false); // State to control modal visibility
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isRecordingAnswered, setIsRecordingAnswered] = useState(false);
 
-  // Function to toggle the modal visibility
   const openCodeEditor = () => {
     setIsModalOpen(true);
   };
@@ -55,24 +55,30 @@ function RecordAnswerSection({ mockInterviewQuestion, activeQuestionIndex, inter
   const closeModal = () => {
     setIsModalOpen(false);
   };
+
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedAnswer(userAnswer);
-    }, 1000); // delay of 1 second
+    }, 1000);
 
     return () => clearTimeout(timer);
   }, [userAnswer]);
 
   useEffect(() => {
+    // Update userAnswer only when the recording stops or when it's a new answer
+    if (isRecording) return;  // Do not update userAnswer while recording
     setUserAnswer(transcript.trim());
   }, [transcript]);
 
   const startListening = () => {
+    resetTranscript();  // Clear previous transcript
     SpeechRecognition.startListening({ continuous: true, language: "en-IN" });
     setPitchData([]);
     setRecordingStartTime(Date.now());
     setIsAnalyzingPitch(true);
     setFeedback(null);
+    setIsFeedbackProcessed(false);
+    setUserAnswer('');  // Reset answer when starting new recording
   };
 
   const stopListening = () => {
@@ -83,36 +89,36 @@ function RecordAnswerSection({ mockInterviewQuestion, activeQuestionIndex, inter
     const durationInSeconds = (Date.now() - recordingStartTime) / 1000;
     const wordsPerSecond = words / durationInSeconds;
 
-    // Fluency
     let fluency = "";
     if (wordsPerSecond >= 3) fluency = "High Fluency";
     else if (wordsPerSecond >= 1.5) fluency = "Moderate Fluency";
     else fluency = "Low Fluency";
 
-    // Tone
     const avgPitch = pitchData.length
-      ? (pitchData.reduce((a, b) => a + b, 0) / pitchData.length).toFixed(2)
-      : 0;
-    let tone = "";
-    if (avgPitch >= 30) tone = "High Tone";
-    else if (avgPitch >= 10) tone = "Moderate Tone";
-    else tone = "Low Tone";
+    ? (pitchData.reduce((a, b) => a + b, 0) / pitchData.length).toFixed(2)
+    : 0;
+  let tone = "";
+  if (avgPitch >= 30) tone = "High Tone";
+  else if (avgPitch >= 10) tone = "Moderate Tone";
+  else tone = "Low Tone";
 
-    // Pitch Variation
-    const pitchVariation = pitchData.length
-      ? (Math.max(...pitchData) - Math.min(...pitchData)).toFixed(2)
-      : "N/A";
+  // Pitch Variation
+  const pitchVariation = pitchData.length
+    ? (Math.max(...pitchData) - Math.min(...pitchData)).toFixed(2)
+    : "N/A";
 
-    // Set feedback
-    setFeedback({
-      transcript,
-      fluency,
-      tone,
-      avgPitch,
-      pitchVariation,
-    });
+    if (!isFeedbackProcessed) {
+      setFeedback({
+        transcript,
+        fluency,
+        tone,
+        avgPitch,
+        pitchVariation,
+      });
 
-    setUserAnswer(''); // Clear user answer after stop
+      setIsFeedbackProcessed(true);
+      setUserAnswer('');  // Reset answer after feedback processing
+    }
   };
 
   const toggleRecording = () => {
@@ -196,22 +202,12 @@ function RecordAnswerSection({ mockInterviewQuestion, activeQuestionIndex, inter
   };
 
   useEffect(() => {
-    if (transcript) {
-      setUserAnswer((prevAns) => {
-        // Ensure we append the transcript only once and avoid duplication
-        return prevAns.includes(transcript) ? prevAns : prevAns + transcript;
-      });
-    }
-  }, [transcript]);
-  
-
-  useEffect(() => {
-    if (!isRecording && userAnswer.length > 10) {
+    if (!isRecording && userAnswer.length > 10 && !isRecordingAnswered) {
       UpdateUserAnswer();
       setIsRecordingAnswered(true);
+      setUserAnswer('');  // Reset after submitting an answer
     }
   }, [userAnswer, isRecording]);
-  const [isRecordingAnswered, setIsRecordingAnswered] = useState(false);
 
   const UpdateUserAnswer = async () => {
     try {
@@ -221,9 +217,6 @@ function RecordAnswerSection({ mockInterviewQuestion, activeQuestionIndex, inter
       }
 
       setLoading(true);
-      console.log('User Answer:', userAnswer);
-      console.log("feedback:", feedback);
-
       const feedbackPrompt = `
         Question: ${mockInterviewQuestion[activeQuestionIndex]?.question},
         User Answer: ${userAnswer},
@@ -236,8 +229,6 @@ function RecordAnswerSection({ mockInterviewQuestion, activeQuestionIndex, inter
         .replace('```json', '')
         .replace('```', '');
       const JsonFeedbackResp = JSON.parse(mockJsonResp);
-
-      console.log('Feedback Response:', JsonFeedbackResp);
 
       const resp = await db.insert(UserAnswer).values({
         mockIdRef: interviewData?.mockId,
@@ -256,16 +247,22 @@ function RecordAnswerSection({ mockInterviewQuestion, activeQuestionIndex, inter
 
       if (resp) {
         toast.success('User Answer Recorded successfully.');
-        setUserAnswer('');
+        setIsRecordingAnswered(false);
+        setUserAnswer(''); // Reset the answer after it's recorded
+        if (activeQuestionIndex < mockInterviewQuestion.length - 1) {
+          setActiveQuestionIndex((prev) => prev + 1);
+        } else {
+          toast.success('Interview completed.');
+          endInterview();
+        }
       }
     } catch (error) {
       console.error('Error while saving user answer:', error);
       toast.error('Error while saving your answer, please try again.');
     } finally {
-      setLoading(false); // Reset loading state
+      setLoading(false);
     }
   };
- 
 
   return (
     <div className='flex items-center justify-center flex-col'>
@@ -304,40 +301,35 @@ function RecordAnswerSection({ mockInterviewQuestion, activeQuestionIndex, inter
         )}
       </div>
       <div className="flex gap-4">
-  {/* Record Answer Button */}
-  <Button
-    disabled={loading}
-    variant="outline"
-    className="my-20"
-    onClick={toggleRecording}
-  >
-    {isRecording ? (
-      <h2 className="text-red-600 flex gap-2">
-        <StopCircle /> Stop Recording
-      </h2>
-    ) : (
-      <h2 className="text-primary flex gap-2"><Mic /> Record Answer</h2>
-    )}
-  </Button>
-
-  {/* Open Editor Button */}
-  <Button
-    variant="outline"
-    className="my-20"
-    onClick={openCodeEditor} // Replace with your actual functionality
-  >
-    <h2 className="text-primary flex gap-2">
-      <Code/>
-      Open Editor
-    </h2>
-  </Button>
-  <Model isOpen={isModalOpen} closeModal={closeModal}>
-        <CodeArea isOpen={isModalOpen} closeModal={closeModal} setUserAnswer={setUserAnswer}/>
-       
-      </Model>
-</div>
+        <Button
+          disabled={loading}
+          variant="outline"
+          className="my-20"
+          onClick={toggleRecording}
+        >
+          {isRecording ? (
+            <h2 className="text-red-600 flex gap-2">
+              <StopCircle /> Stop Recording
+            </h2>
+          ) : (
+            <h2 className="text-primary flex gap-2"><Mic /> Record Answer</h2>
+          )}
+        </Button>
+        <Button
+          variant="outline"
+          className="my-20"
+          onClick={openCodeEditor}
+        >
+          <h2 className="text-primary flex gap-2">
+            <Code /> Open Editor
+          </h2>
+        </Button>
+        <Model isOpen={isModalOpen} closeModal={closeModal}>
+        <CodeArea isOpen={isModalOpen} closeModal={closeModal} setUserAnswer={setUserAnswer} />
+        </Model>
+      </div>
     </div>
   );
 }
-export default RecordAnswerSection;
 
+export default RecordAnswerSection;

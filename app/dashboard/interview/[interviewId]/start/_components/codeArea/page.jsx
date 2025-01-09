@@ -56,7 +56,7 @@ function CodeArea({ isOpen, closeModal, setUserAnswer }) {
     const data = await resp.json();
     console.log('Received output:', data); // Check the response from the server
     // Assuming the response structure is { output: [output, error, executionTime] }
-    setOutput(data); // Ensure you're setting the output correctly
+    setOutput(data.output); // Ensure you're setting the output correctly
   }
 
   // Set programming language

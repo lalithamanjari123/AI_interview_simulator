@@ -31,6 +31,15 @@ const HomePage = () => {
       router.push("/sign-in");
     }
   };
+  const handleResumeAnalyzerClick = () => {
+    if (isSignedIn) {
+      // Redirect to Resume Builder if signed in
+      router.push("/dashboard/ResumeAnalyzer");
+    } else {
+      // Redirect to sign-in page if not signed in
+      router.push("/sign-in");
+    }
+  };
   const handleInterviewClick = () => {
     if (isSignedIn) {
       // Redirect to Resume Builder if signed in
@@ -80,15 +89,16 @@ const HomePage = () => {
           </li>
           <li
             className={`hover:text-primary hover:font-bold transition-all cursor-pointer ${path === '/resume-analyser' && 'text-primary font-bold'}`}
+            onClick={handleResumeAnalyzerClick}
           >
             Resume Analyser
           </li>
           
-          <li
+          {/*<li
             className={`hover:text-primary hover:font-bold transition-all cursor-pointer ${path === '/courses' && 'text-primary font-bold'}`}
           >
             Courses
-          </li>
+          </li>*/}
         </ul>
         {isSignedIn &&<div className="hidden md:flex">
           <UserButton />

@@ -89,6 +89,7 @@ function StartInterview({ params }) {
                         mockInterviewQuestion={mockInterviewQuestion}
                         activeQuestionIndex={activeQuestionIndex}
                         interviewData={interviewData}
+                        setActiveQuestionIndex={setActiveQuestionIndex}
                     />
                 ) : (
                     <p>Loading interview details...</p>

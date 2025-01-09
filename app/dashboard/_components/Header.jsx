@@ -20,6 +20,9 @@ function Header() {
   const handleResumeBuilderClick = () => {
     router.push("/dashboard/ResumeBuilder");
   };
+  const handleResumeAnalyzerClick = () => {
+    router.push("/dashboard/ResumeAnalyzer");
+  };
 
   const handleInterviewClick = () => {
     router.push("/dashboard");
@@ -28,6 +31,8 @@ function Header() {
   const handleHomeClick = () => {
     router.push("/"); // Navigates to the homepage
   };
+
+
 
   return (
     <nav className="flex p-4 items-center justify-between bg-secondary shadow-sm">
@@ -67,20 +72,21 @@ function Header() {
           </li>
           <li
             className={`hover:text-primary hover:font-bold transition-all cursor-pointer ${
-              path === "/resume-analyser"
+              path === "/dashboard/ResumeAnalyzer"
                 ? "text-primary font-bold text-blue-500"
                 : ""
             }`}
+            onClick={handleResumeAnalyzerClick}
           >
             Resume Analyser
           </li>
-          <li
+         {/* <li
             className={`hover:text-primary hover:font-bold transition-all cursor-pointer ${
               path === "/courses" ? "text-primary font-bold text-blue-500" : ""
             }`}
           >
             Courses
-          </li>
+          </li>*/}
         </ul>
         <div className="hidden md:flex">
           <UserButton />
@@ -136,7 +142,7 @@ function Header() {
           </li>
           <li
             className={`text-black hover:text-primary cursor-pointer ${
-              path === "/resume-analyser" ? "text-blue-500 font-bold" : ""
+              path === "/dashboard/ResumeAnalyzer" ? "text-blue-500 font-bold" : ""
             }`}
           >
             Resume Analyser
