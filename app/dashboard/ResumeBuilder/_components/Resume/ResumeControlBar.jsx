@@ -23,17 +23,30 @@ const ResumeControlBar = ({ scale, setScale, documentSize, document, fileName })
 
   // Hook to update PDF when document changes
   useEffect(() => {
-    if (typeof update === "function") {
+    // Run the update only after hydration
+    if (typeof window !== "undefined" && typeof update === "function") {
       try {
         update();
       } catch (error) {
         console.error("Error updating PDF instance:", error);
       }
-    } else {
-      console.error("Update is not a function or undefined:", update);
     }
-  }, [update, document]);
+  }, [document]);
+  useEffect(() => {
+    console.log("Document passed to usePDF:", document);
+  }, [document]);
 
+  useEffect(() => {
+    console.log("PDF instance:", instance);
+  }, [instance]);
+    
+  const handleDownload = (e) => {
+    if (!instance.url && instance.loading) {
+      e.preventDefault();
+      console.error("PDF is still being generated. Please wait...");
+    }
+  };
+  
   return (
     <div className="sticky bottom-0 left-0 right-0 flex h-[var(--resume-control-bar-height)] items-center justify-center px-[var(--resume-padding)] text-gray-600 lg:justify-between">
       <div className="flex items-center gap-2">
@@ -60,14 +73,19 @@ const ResumeControlBar = ({ scale, setScale, documentSize, document, fileName })
           <span className="select-none">Autoscale</span>
         </label>
       </div>
-      <a
-        className="ml-1 flex items-center gap-1 rounded-md border border-gray-300 px-3 py-0.5 hover:bg-gray-100 lg:ml-8"
-        href={instance?.url || "#"}
-        download={fileName || "resume.pdf"}
-      >
-        <ArrowDownTrayIcon className="h-4 w-4" />
-        <span className="whitespace-nowrap">Download Resume</span>
-      </a>
+      {instance.loading ? (
+        <span className="text-gray-500">Generating PDF...</span>
+      ) : (
+        <a
+          href={instance?.url || "#"}
+          download={fileName || "resume.pdf"}
+          onClick={handleDownload}
+          className="ml-1 flex items-center gap-1 rounded-md border border-gray-300 px-3 py-0.5 hover:bg-gray-100 lg:ml-8"
+        >
+          <ArrowDownTrayIcon className="h-4 w-4" />
+          <span className="whitespace-nowrap">Download Resume</span>
+        </a>
+      )}
     </div>
   );
 };

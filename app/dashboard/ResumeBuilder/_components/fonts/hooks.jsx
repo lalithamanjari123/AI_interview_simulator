@@ -12,13 +12,13 @@ export var useRegisterReactPDFFont = function () {
             Font.register({
                 family: fontFamily,
                 fonts: [
-                    {
-                        src: "fonts/".concat(fontFamily, "-Regular.ttf"),
-                    },
-                    {
-                        src: "fonts/".concat(fontFamily, "-Bold.ttf"),
-                        fontWeight: "bold",
-                    },
+                  {
+                    src: `/fonts/${fontFamily}-Regular.ttf`, // Correct path for Next.js public folder
+                  },
+                  {
+                    src: `/fonts/${fontFamily}-Bold.ttf`, // Correct path for Next.js public folder
+                    fontWeight: "bold",
+                  },
                 ],
             });
         });
